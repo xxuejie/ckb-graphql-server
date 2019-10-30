@@ -1,4 +1,5 @@
 use ckb_jsonrpc_types;
+use ckb_types::{self, packed};
 use serde_plain::to_string;
 
 pub struct Header(pub ckb_jsonrpc_types::HeaderView);
@@ -94,7 +95,14 @@ impl Transaction {
             .inner
             .outputs
             .iter()
-            .map(|output| CellOutput(output))
+            .zip(self.0.inner.outputs_data.iter())
+            .map(|(output, data)| {
+                CellOutput(
+                    output,
+                    ckb_types::core::Capacity::bytes(data.len() as usize)
+                        .expect("capacity overflow"),
+                )
+            })
             .collect()
     }
 
@@ -160,12 +168,22 @@ impl<'a> OutPoint<'a> {
     }
 }
 
-pub struct CellOutput<'a>(pub &'a ckb_jsonrpc_types::CellOutput);
+pub struct CellOutput<'a>(
+    pub &'a ckb_jsonrpc_types::CellOutput,
+    pub ckb_types::core::Capacity,
+);
 
 #[juniper::object]
 impl<'a> CellOutput<'a> {
     fn capacity(&self) -> String {
         to_string(&self.0.capacity).expect("serde")
+    }
+
+    fn occupied_capacity(&self) -> String {
+        let output: packed::CellOutput = self.0.clone().into();
+        let occupied_capacity = output.occupied_capacity(self.1).expect("occupied capacity");
+        let capacity: ckb_jsonrpc_types::Capacity = occupied_capacity.into();
+        to_string(&capacity).expect("serde")
     }
 
     fn lock(&self) -> Script {

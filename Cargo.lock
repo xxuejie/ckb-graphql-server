@@ -285,6 +285,7 @@ dependencies = [
  "ckb-db 0.24.0-pre (git+https://github.com/xxuejie/ckb.git?rev=aa72a3b)",
  "ckb-jsonrpc-types 0.24.0-pre (git+https://github.com/xxuejie/ckb.git?rev=aa72a3b)",
  "ckb-store 0.24.0-pre (git+https://github.com/xxuejie/ckb.git?rev=aa72a3b)",
+ "ckb-types 0.24.0-pre (git+https://github.com/xxuejie/ckb.git?rev=aa72a3b)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,9 +1,6 @@
 mod types;
 
-use ckb_db::{
-    iter::{DBIteratorItem, Direction},
-    Col,
-};
+use ckb_db::{iter::DBIter, Col};
 use ckb_jsonrpc_types::{BlockNumber, Byte32};
 use ckb_store::{ChainStore, StoreCache, COLUMNS};
 use clap::{App, Arg};
@@ -16,7 +13,7 @@ use hyper::{
 use juniper::{EmptyMutation, FieldResult, RootNode};
 use rocksdb::{
     ops::{GetColumnFamilys, GetPinnedCF, IterateCF, OpenCF},
-    DBPinnableSlice, Direction as RdbDirection, IteratorMode, Options, ReadOnlyDB,
+    DBPinnableSlice, IteratorMode, Options, ReadOnlyDB,
 };
 use serde_json::from_str as from_json_str;
 use serde_plain::from_str;
@@ -38,22 +35,9 @@ impl<'a> ChainStore<'a> for Context {
         self.db.get_pinned_cf(cf, &key).expect("db get")
     }
 
-    fn get_iter<'i>(
-        &'i self,
-        col: Col,
-        from_key: &'i [u8],
-        direction: Direction,
-    ) -> Box<dyn Iterator<Item = DBIteratorItem> + 'i> {
+    fn get_iter<'i>(&'i self, col: Col, mode: IteratorMode) -> DBIter {
         let cf = self.db.cf_handle(col).expect("db cf_handle");
-        let iter_direction = match direction {
-            Direction::Forward => RdbDirection::Forward,
-            Direction::Reverse => RdbDirection::Reverse,
-        };
-        let mode = IteratorMode::From(from_key, iter_direction);
-        self.db
-            .iterator_cf(cf, mode)
-            .map(|iter| Box::new(iter) as Box<_>)
-            .expect("db iter")
+        self.db.iterator_cf(cf, mode).expect("db iter")
     }
 }
 

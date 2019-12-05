@@ -4,7 +4,7 @@ GraphQL server for CKB. For maximum performance, it works by reading from CKB's 
 
 # Usage
 
-For now, the GraphQL server works with CKB 0.23.
+The GraphQL server currently works with current CKB 0.25, notice since it reads directly into CKB's internal storage, compatibility issues might be encountered when CKB optimized its internal storage format. We will try our best to make sure we upgrade this project together with mainnet CKB versions.
 
 First, a running CKB instance is needed. Since this project directly reads data from CKB's rocksdb instance, we need to keep track of the running directory of CKB. For example, if CKB is started via `ckb run -C /foo/bar`, the directory we will need here is `/foo/bar`. Please take a look at your CKB running configuration, and keep a note of the running directory in our environment.
 

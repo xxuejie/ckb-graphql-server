@@ -62,6 +62,13 @@ impl Query {
         }
     }
 
+    fn tip_block(context: &Context) -> FieldResult<Option<types::Block>> {
+        Ok(context
+            .get_tip_header()
+            .and_then(|header| context.get_block(&header.hash()))
+            .map(|b| types::Block(b.into())))
+    }
+
     fn get_transaction(context: &Context, hash: String) -> FieldResult<Option<types::Transaction>> {
         let hash: Byte32 = from_str(&hash)?;
         match context.get_transaction(&hash.into()) {

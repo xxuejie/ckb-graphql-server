@@ -77,6 +77,22 @@ impl Header {
     }
 }
 
+pub struct HeaderDep(pub H256);
+
+#[juniper::object(
+    Context = Context,
+)]
+impl HeaderDep {
+    fn hash(&self) -> String {
+        to_string(&self.0).expect("serde")
+    }
+
+    fn header(&self, context: &Context) -> Option<Header> {
+        let header = context.get_block_header(&self.0.pack());
+        header.map(|h| Header(h.into()))
+    }
+}
+
 pub struct Transaction(pub ckb_jsonrpc_types::TransactionView);
 
 #[juniper::object(
@@ -96,12 +112,12 @@ impl Transaction {
             .collect()
     }
 
-    fn header_deps(&self) -> Vec<String> {
+    fn header_deps(&self) -> Vec<HeaderDep> {
         self.0
             .inner
             .header_deps
             .iter()
-            .map(|dep| to_string(&dep).expect("serde"))
+            .map(|dep| HeaderDep(dep.clone()))
             .collect()
     }
 

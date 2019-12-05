@@ -19,7 +19,7 @@ use serde_json::from_str as from_json_str;
 use serde_plain::from_str;
 use std::sync::Arc;
 
-struct Context {
+pub struct Context {
     db: ReadOnlyDB,
 }
 

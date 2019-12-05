@@ -1,6 +1,28 @@
+use crate::Context;
 use ckb_jsonrpc_types;
-use ckb_types::{self, packed};
+use ckb_store::ChainStore;
+use ckb_types::{self, packed, prelude::*, H256};
 use serde_plain::to_string;
+
+pub struct Bytes(pub ckb_jsonrpc_types::JsonBytes);
+
+#[juniper::object]
+impl Bytes {
+    fn hash(&self) -> String {
+        let hash = packed::CellOutput::calc_data_hash(self.0.as_bytes());
+        let hash: H256 = hash.unpack();
+        to_string(&hash).expect("serde")
+    }
+
+    fn length(&self) -> String {
+        let length: ckb_jsonrpc_types::Uint64 = (self.0.len() as u64).into();
+        to_string(&length).expect("serde")
+    }
+
+    fn content(&self) -> String {
+        to_string(&self.0).expect("serde")
+    }
+}
 
 pub struct Header(pub ckb_jsonrpc_types::HeaderView);
 
@@ -57,7 +79,9 @@ impl Header {
 
 pub struct Transaction(pub ckb_jsonrpc_types::TransactionView);
 
-#[juniper::object]
+#[juniper::object(
+    Context = Context,
+)]
 impl Transaction {
     fn version(&self) -> String {
         to_string(&self.0.inner.version).expect("serde")
@@ -98,7 +122,7 @@ impl Transaction {
             .zip(self.0.inner.outputs_data.iter())
             .map(|(output, data)| {
                 CellOutput(
-                    output,
+                    output.clone(),
                     ckb_types::core::Capacity::bytes(data.len() as usize)
                         .expect("capacity overflow"),
                 )
@@ -115,12 +139,12 @@ impl Transaction {
             .collect()
     }
 
-    fn outputs_data(&self) -> Vec<String> {
+    fn outputs_data(&self) -> Vec<Bytes> {
         self.0
             .inner
             .outputs_data
             .iter()
-            .map(|output_data| to_string(&output_data).expect("serde"))
+            .map(|output_data| Bytes(output_data.clone()))
             .collect()
     }
 
@@ -131,7 +155,9 @@ impl Transaction {
 
 pub struct CellDep<'a>(pub &'a ckb_jsonrpc_types::CellDep);
 
-#[juniper::object]
+#[juniper::object(
+    Context = Context,
+)]
 impl<'a> CellDep<'a> {
     fn out_point(&self) -> OutPoint {
         OutPoint(&self.0.out_point)
@@ -144,7 +170,9 @@ impl<'a> CellDep<'a> {
 
 pub struct CellInput<'a>(pub &'a ckb_jsonrpc_types::CellInput);
 
-#[juniper::object]
+#[juniper::object(
+    Context = Context,
+)]
 impl<'a> CellInput<'a> {
     fn previous_output(&self) -> OutPoint {
         OutPoint(&self.0.previous_output)
@@ -157,7 +185,9 @@ impl<'a> CellInput<'a> {
 
 pub struct OutPoint<'a>(pub &'a ckb_jsonrpc_types::OutPoint);
 
-#[juniper::object]
+#[juniper::object(
+    Context = Context,
+)]
 impl<'a> OutPoint<'a> {
     fn tx_hash(&self) -> String {
         to_string(&self.0.tx_hash).expect("serde")
@@ -166,15 +196,31 @@ impl<'a> OutPoint<'a> {
     fn index(&self) -> String {
         to_string(&self.0.index).expect("serde")
     }
+
+    fn cell(&self, context: &Context) -> Option<CellOutput> {
+        let cell_meta = context.get_cell_meta(&self.0.tx_hash.pack(), self.0.index.into());
+        cell_meta.map(|meta| {
+            CellOutput(
+                meta.cell_output.into(),
+                ckb_types::core::Capacity::bytes(meta.data_bytes as usize)
+                    .expect("capacity overflow"),
+            )
+        })
+    }
+
+    fn cell_data(&self, context: &Context) -> Option<Bytes> {
+        let cell_data = context.get_cell_data(&self.0.tx_hash.pack(), self.0.index.into());
+        cell_data.map(|(data, _)| Bytes(ckb_jsonrpc_types::JsonBytes::from_bytes(data)))
+    }
 }
 
-pub struct CellOutput<'a>(
-    pub &'a ckb_jsonrpc_types::CellOutput,
+pub struct CellOutput(
+    pub ckb_jsonrpc_types::CellOutput,
     pub ckb_types::core::Capacity,
 );
 
 #[juniper::object]
-impl<'a> CellOutput<'a> {
+impl CellOutput {
     fn capacity(&self) -> String {
         to_string(&self.0.capacity).expect("serde")
     }
@@ -214,11 +260,20 @@ impl<'a> Script<'a> {
     fn hash_type(&self) -> String {
         to_string(&self.0.hash_type).expect("serde")
     }
+
+    fn hash(&self) -> String {
+        let packed_script: packed::Script = self.0.clone().into();
+        let hash = packed_script.calc_script_hash();
+        let hash: H256 = hash.unpack();
+        to_string(&hash).expect("serde")
+    }
 }
 
 pub struct Block(pub ckb_jsonrpc_types::BlockView);
 
-#[juniper::object]
+#[juniper::object(
+    Context = Context,
+)]
 impl Block {
     fn header(&self) -> Header {
         Header(self.0.header.clone())

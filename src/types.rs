@@ -176,7 +176,24 @@ pub struct CellDep<'a>(pub &'a ckb_jsonrpc_types::CellDep);
 )]
 impl<'a> CellDep<'a> {
     fn out_point(&self) -> OutPoint {
-        OutPoint(&self.0.out_point)
+        OutPoint(self.0.out_point.clone())
+    }
+
+    fn resolved_out_points(&self, context: &Context) -> Vec<OutPoint> {
+        if self.0.dep_type == ckb_jsonrpc_types::DepType::Code {
+            return vec![OutPoint(self.0.out_point.clone())];
+        }
+        let cell_data = context.get_cell_data(
+            &self.0.out_point.tx_hash.pack(),
+            self.0.out_point.index.into(),
+        );
+        match cell_data {
+            Some((data, _)) => match packed::OutPointVec::from_slice(&data) {
+                Ok(v) => v.into_iter().map(|o| OutPoint(o.into())).collect(),
+                Err(_) => vec![],
+            },
+            None => vec![],
+        }
     }
 
     fn dep_type(&self) -> String {
@@ -191,7 +208,7 @@ pub struct CellInput<'a>(pub &'a ckb_jsonrpc_types::CellInput);
 )]
 impl<'a> CellInput<'a> {
     fn previous_output(&self) -> OutPoint {
-        OutPoint(&self.0.previous_output)
+        OutPoint(self.0.previous_output.clone())
     }
 
     fn since(&self) -> String {
@@ -199,12 +216,12 @@ impl<'a> CellInput<'a> {
     }
 }
 
-pub struct OutPoint<'a>(pub &'a ckb_jsonrpc_types::OutPoint);
+pub struct OutPoint(pub ckb_jsonrpc_types::OutPoint);
 
 #[juniper::object(
     Context = Context,
 )]
-impl<'a> OutPoint<'a> {
+impl OutPoint {
     fn tx_hash(&self) -> String {
         to_string(&self.0.tx_hash).expect("serde")
     }

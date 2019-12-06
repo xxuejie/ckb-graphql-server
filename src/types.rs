@@ -112,7 +112,16 @@ impl Transaction {
             .collect()
     }
 
-    fn header_deps(&self) -> Vec<HeaderDep> {
+    fn header_deps(&self) -> Vec<String> {
+        self.0
+            .inner
+            .header_deps
+            .iter()
+            .map(|dep| to_string(&dep).expect("serde"))
+            .collect()
+    }
+
+    fn resolved_header_deps(&self) -> Vec<HeaderDep> {
         self.0
             .inner
             .header_deps

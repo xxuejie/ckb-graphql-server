@@ -127,15 +127,22 @@ impl Query {
             .try_fold(vec![], |mut results, out_point| {
                 let rpc_out_point =
                     ckb_jsonrpc_types::OutPoint::try_from(out_point).and_then(|rpc_out_point| {
-                        match context.get_cell_meta(
-                            &rpc_out_point.tx_hash.pack(),
-                            rpc_out_point.index.into(),
-                        ) {
-                            Some(_) => Ok(rpc_out_point),
-                            None => {
-                                Err(format!("Cannot find cell: {:?}", rpc_out_point).to_string())
-                            }
-                        }
+                        let tx_hash = rpc_out_point.tx_hash.pack();
+                        let index = rpc_out_point.index.into();
+                        context
+                            .get_tx_meta(&tx_hash)
+                            .and_then(|tx_meta| {
+                                if (index as usize) < tx_meta.len() {
+                                    Some(())
+                                } else {
+                                    None
+                                }
+                            })
+                            .and_then(|_| context.get_cell_meta(&tx_hash, index))
+                            .ok_or_else(|| {
+                                format!("Cannot find cell: 0x{:x}@{}!", tx_hash, index).to_string()
+                            })
+                            .map(|_| rpc_out_point)
                     });
                 match rpc_out_point {
                     Ok(rpc_out_point) => {

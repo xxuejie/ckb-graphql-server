@@ -1,8 +1,10 @@
+mod input_types;
 mod types;
 
 use ckb_db::{iter::DBIter, Col};
 use ckb_jsonrpc_types::{BlockNumber, Byte32};
 use ckb_store::{ChainStore, StoreCache, COLUMNS};
+use ckb_types::prelude::*;
 use clap::{App, Arg};
 use futures::future;
 use hyper::{
@@ -17,6 +19,7 @@ use rocksdb::{
 };
 use serde_json::from_str as from_json_str;
 use serde_plain::from_str;
+use std::convert::TryFrom;
 use std::sync::Arc;
 
 pub struct Context {
@@ -113,6 +116,36 @@ impl Query {
             }
         };
         Ok(block.map(|b| types::Block(b.into())))
+    }
+
+    fn get_cells(
+        context: &Context,
+        out_points: Vec<input_types::InputOutPoint>,
+    ) -> FieldResult<Vec<types::OutPoint>> {
+        out_points
+            .iter()
+            .try_fold(vec![], |mut results, out_point| {
+                let rpc_out_point =
+                    ckb_jsonrpc_types::OutPoint::try_from(out_point).and_then(|rpc_out_point| {
+                        match context.get_cell_meta(
+                            &rpc_out_point.tx_hash.pack(),
+                            rpc_out_point.index.into(),
+                        ) {
+                            Some(_) => Ok(rpc_out_point),
+                            None => {
+                                Err(format!("Cannot find cell: {:?}", rpc_out_point).to_string())
+                            }
+                        }
+                    });
+                match rpc_out_point {
+                    Ok(rpc_out_point) => {
+                        results.push(rpc_out_point);
+                        Ok(results)
+                    }
+                    Err(e) => Err(e.into()),
+                }
+            })
+            .map(|ops| ops.into_iter().map(|o| types::OutPoint(o)).collect())
     }
 }
 

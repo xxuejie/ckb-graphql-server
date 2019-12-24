@@ -32,10 +32,12 @@ impl Header {
         to_string(&self.0.inner.version).expect("serde")
     }
 
+    #[graphql(name = "compact_target")]
     fn compact_target(&self) -> String {
         to_string(&self.0.inner.compact_target).expect("serde")
     }
 
+    #[graphql(name = "parent_hash")]
     fn parent_hash(&self) -> String {
         to_string(&self.0.inner.parent_hash).expect("serde")
     }
@@ -52,14 +54,17 @@ impl Header {
         to_string(&self.0.inner.epoch).expect("serde")
     }
 
+    #[graphql(name = "transactions_root")]
     fn transactions_root(&self) -> String {
         to_string(&self.0.inner.transactions_root).expect("serde")
     }
 
+    #[graphql(name = "proposals_hash")]
     fn proposals_hash(&self) -> String {
         to_string(&self.0.inner.proposals_hash).expect("serde")
     }
 
+    #[graphql(name = "uncles_hash")]
     fn uncles_hash(&self) -> String {
         to_string(&self.0.inner.uncles_hash).expect("serde")
     }
@@ -103,6 +108,7 @@ impl Transaction {
         to_string(&self.0.inner.version).expect("serde")
     }
 
+    #[graphql(name = "cell_deps")]
     fn cell_deps(&self) -> Vec<CellDep> {
         self.0
             .inner
@@ -112,6 +118,7 @@ impl Transaction {
             .collect()
     }
 
+    #[graphql(name = "header_deps")]
     fn header_deps(&self) -> Vec<String> {
         self.0
             .inner
@@ -121,6 +128,7 @@ impl Transaction {
             .collect()
     }
 
+    #[graphql(name = "resolved_header_deps")]
     fn resolved_header_deps(&self) -> Vec<HeaderDep> {
         self.0
             .inner
@@ -164,6 +172,7 @@ impl Transaction {
             .collect()
     }
 
+    #[graphql(name = "outputs_data")]
     fn outputs_data(&self) -> Vec<Bytes> {
         self.0
             .inner
@@ -184,10 +193,12 @@ pub struct CellDep<'a>(pub &'a ckb_jsonrpc_types::CellDep);
     Context = Context,
 )]
 impl<'a> CellDep<'a> {
+    #[graphql(name = "out_point")]
     fn out_point(&self) -> OutPoint {
         OutPoint(self.0.out_point.clone())
     }
 
+    #[graphql(name = "resolved_out_points")]
     fn resolved_out_points(&self, context: &Context) -> Vec<OutPoint> {
         if self.0.dep_type == ckb_jsonrpc_types::DepType::Code {
             return vec![OutPoint(self.0.out_point.clone())];
@@ -205,6 +216,7 @@ impl<'a> CellDep<'a> {
         }
     }
 
+    #[graphql(name = "dep_type")]
     fn dep_type(&self) -> String {
         to_string(&self.0.dep_type).expect("serde")
     }
@@ -216,6 +228,7 @@ pub struct CellInput<'a>(pub &'a ckb_jsonrpc_types::CellInput);
     Context = Context,
 )]
 impl<'a> CellInput<'a> {
+    #[graphql(name = "previous_output")]
     fn previous_output(&self) -> OutPoint {
         OutPoint(self.0.previous_output.clone())
     }
@@ -231,6 +244,7 @@ pub struct OutPoint(pub ckb_jsonrpc_types::OutPoint);
     Context = Context,
 )]
 impl OutPoint {
+    #[graphql(name = "tx_hash")]
     fn tx_hash(&self) -> String {
         to_string(&self.0.tx_hash).expect("serde")
     }
@@ -250,6 +264,7 @@ impl OutPoint {
         })
     }
 
+    #[graphql(name = "cell_data")]
     fn cell_data(&self, context: &Context) -> Option<Bytes> {
         let cell_data = context.get_cell_data(&self.0.tx_hash.pack(), self.0.index.into());
         cell_data.map(|(data, _)| Bytes(ckb_jsonrpc_types::JsonBytes::from_bytes(data)))
@@ -267,6 +282,7 @@ impl CellOutput {
         to_string(&self.0.capacity).expect("serde")
     }
 
+    #[graphql(name = "occupied_capacity")]
     fn occupied_capacity(&self) -> String {
         let output: packed::CellOutput = self.0.clone().into();
         let occupied_capacity = output.occupied_capacity(self.1).expect("occupied capacity");
@@ -295,10 +311,12 @@ impl<'a> Script<'a> {
         to_string(&self.0.args).expect("serde")
     }
 
+    #[graphql(name = "code_hash")]
     fn code_hash(&self) -> String {
         to_string(&self.0.code_hash).expect("serde")
     }
 
+    #[graphql(name = "hash_type")]
     fn hash_type(&self) -> String {
         to_string(&self.0.hash_type).expect("serde")
     }

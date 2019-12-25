@@ -173,7 +173,17 @@ impl Transaction {
     }
 
     #[graphql(name = "outputs_data")]
-    fn outputs_data(&self) -> Vec<Bytes> {
+    fn outputs_data(&self) -> Vec<String> {
+        self.0
+            .inner
+            .outputs_data
+            .iter()
+            .map(|output_data| to_string(&output_data).expect("serde"))
+            .collect()
+    }
+
+    #[graphql(name = "cells_data")]
+    fn cells_data(&self) -> Vec<Bytes> {
         self.0
             .inner
             .outputs_data

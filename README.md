@@ -20,7 +20,3 @@ $ target/release/ckb-graphql-server --db /foo/bar/data/db --listen 0.0.0.0:3000
 Again, if you are running CKB in a different directory than `/foo/bar`, you need to modify the command accordingly.
 
 Now if you go to `http://localhost:3000`, you should have a GraphQL server to play with.
-
-# Caveat
-
-Due to limitations in `rust-rocksdb`, we can only work with rocksdb's read only mode, not secondary mode for now. This will have a severe performance degradation for now, we will see if we can tackle this later.

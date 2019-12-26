@@ -20,7 +20,9 @@ use rocksdb::{
 use serde_json::from_str as from_json_str;
 use serde_plain::from_str;
 use std::convert::TryFrom;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use std::thread;
+use std::time::Duration;
 
 pub struct Context {
     db: ReadOnlyDB,
@@ -152,7 +154,7 @@ impl Query {
                     Err(e) => Err(e.into()),
                 }
             })
-            .map(|ops| ops.into_iter().map(|o| types::OutPoint(o)).collect())
+            .map(|ops| ops.into_iter().map(types::OutPoint).collect())
     }
 }
 
@@ -185,23 +187,23 @@ fn main() {
     ReadOnlyDB::open_cf(&Options::default(), &db_path, &cf_options).expect("rocksdb");
 
     let root_node = Arc::new(RootNode::new(Query, EmptyMutation::<Context>::new()));
+    let ctx = Arc::new(RwLock::new(Arc::new(Context {
+        db: ReadOnlyDB::open_cf(&Options::default(), &db_path, &cf_options).expect("rocksdb"),
+    })));
+    let ctx2 = Arc::clone(&ctx);
+    thread::spawn(move || loop {
+        thread::sleep(Duration::from_secs(2));
+        let mut c = ctx.write().unwrap();
+        *c = Arc::new(Context {
+            db: ReadOnlyDB::open_cf(&Options::default(), &db_path, &cf_options).expect("rocksdb"),
+        });
+    });
     let new_service = move || {
         let root_node = root_node.clone();
-        let db_path = db_path.clone();
-        let cf_options = cf_options.clone();
+        let ctx2 = ctx2.clone();
         service_fn(move |req| -> Box<dyn Future<Item = _, Error = _> + Send> {
             let root_node = root_node.clone();
-            // TODO: this is an expensive operation here to initialize DB for
-            // each GraphQL request, since it needs to read rocksdb WAL log in
-            // the initialization phase. This is due to the 6.2.x rocksdb
-            // release used in rust-rocksdb doesn't have C bindings exposed for
-            // secondary mode. Once rust-rocksdb is upgrade, we should change
-            // to use secondary mode, so we can tail the WAL log for better
-            // performance.
-            let ctx = Arc::new(Context {
-                db: ReadOnlyDB::open_cf(&Options::default(), &db_path, &cf_options)
-                    .expect("rocksdb"),
-            });
+            let ctx = ctx2.read().unwrap().clone();
             match (req.method(), req.uri().path()) {
                 (&Method::GET, "/") => Box::new(juniper_hyper::graphiql("/graphql")),
                 (&Method::GET, "/graphql") => Box::new(juniper_hyper::graphql(root_node, ctx, req)),

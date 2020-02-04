@@ -195,6 +195,11 @@ impl Transaction {
     fn hash(&self) -> String {
         to_string(&self.0.hash).expect("serde")
     }
+
+    fn header(&self, context: &Context) -> Option<Header> {
+        let header = context.get_block_header(&self.0.hash.pack());
+        header.map(|h| Header(h.into()))
+    }
 }
 
 pub struct CellDep<'a>(pub &'a ckb_jsonrpc_types::CellDep);

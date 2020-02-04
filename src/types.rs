@@ -279,6 +279,16 @@ impl OutPoint {
         let cell_data = context.get_cell_data(&self.0.tx_hash.pack(), self.0.index.into());
         cell_data.map(|(data, _)| Bytes(ckb_jsonrpc_types::JsonBytes::from_bytes(data)))
     }
+
+    fn header(&self, context: &Context) -> Option<Header> {
+        context
+            .get_tx_meta(&self.0.tx_hash.pack())
+            .and_then(|meta| {
+                context
+                    .get_block_header(&meta.block_hash())
+                    .map(|header_view| Header(header_view.into()))
+            })
+    }
 }
 
 pub struct CellOutput(

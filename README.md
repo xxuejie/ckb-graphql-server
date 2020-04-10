@@ -11,7 +11,7 @@ First, a running CKB instance is needed. Since this project directly reads data 
 Then we can start CKB's GraphQL server:
 
 ```
-$ git clone https://github.com/nervosnetwork/ckb-graphql-server
+$ git clone https://github.com/xxuejie/ckb-graphql-server
 $ cd ckb-graphql-server
 $ cargo build --release
 $ target/release/ckb-graphql-server --db /foo/bar/data/db --listen 0.0.0.0:3000

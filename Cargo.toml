@@ -23,3 +23,6 @@ serde_plain = "0.3.0"
 [dependencies.rocksdb]
 git = "https://github.com/nervosnetwork/rust-rocksdb"
 rev = "a8dd2ad"
+
+[profile.release]
+debug = true

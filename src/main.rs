@@ -22,7 +22,7 @@ use serde_plain::from_str;
 use std::convert::TryFrom;
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 pub struct Context {
     db: ReadOnlyDB,
@@ -191,10 +191,13 @@ fn main() {
     let ctx2 = Arc::clone(&ctx);
     thread::spawn(move || loop {
         thread::sleep(Duration::from_secs(2));
+        let a = SystemTime::now();
         let mut c = ctx.write().unwrap();
         *c = Arc::new(Context {
             db: ReadOnlyDB::open_cf(&Options::default(), &db_path, &cf_options).expect("rocksdb"),
         });
+        let b = SystemTime::now();
+        println!("Reload time: {:?}", b.duration_since(a).unwrap());
     });
     let new_service = move || {
         let root_node = root_node.clone();

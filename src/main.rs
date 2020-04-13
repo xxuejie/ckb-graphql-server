@@ -191,10 +191,10 @@ fn main() {
     let ctx2 = Arc::clone(&ctx);
     thread::spawn(move || loop {
         thread::sleep(Duration::from_secs(2));
-        let mut c = ctx.write().unwrap();
-        *c = Arc::new(Context {
+        let new_db = Arc::new(Context {
             db: ReadOnlyDB::open_cf(&Options::default(), &db_path, &cf_options).expect("rocksdb"),
         });
+        *ctx.write().unwrap() = new_db;
     });
     let new_service = move || {
         let root_node = root_node.clone();

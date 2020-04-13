@@ -15,17 +15,18 @@ use hyper::{
 use juniper::{EmptyMutation, FieldResult, RootNode};
 use rocksdb::{
     ops::{GetColumnFamilys, GetPinnedCF, IterateCF, OpenCF},
-    DBPinnableSlice, IteratorMode, Options, ReadOnlyDB,
+    DBPinnableSlice, IteratorMode, Options, SecondaryDB,
+    SecondaryOpenDescriptor, ColumnFamilyDescriptor,
 };
 use serde_json::from_str as from_json_str;
 use serde_plain::from_str;
 use std::convert::TryFrom;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
 pub struct Context {
-    db: ReadOnlyDB,
+    db: SecondaryDB,
 }
 
 impl<'a> ChainStore<'a> for Context {
@@ -158,6 +159,7 @@ impl Query {
 
 fn main() {
     env_logger::init();
+    println!("Here!");
 
     let matches = App::new("CKB GraphQL server")
         .arg(
@@ -179,29 +181,30 @@ fn main() {
         .get_matches();
 
     let db_path = matches.value_of("db").unwrap().to_string();
-    let cfnames: Vec<_> = (0..COLUMNS).map(|c| c.to_string()).collect();
-    let cf_options: Vec<String> = cfnames.into_iter().map(|n| n).collect();
-    // Test opening DB first before initializing server.
-    ReadOnlyDB::open_cf(&Options::default(), &db_path, &cf_options).expect("rocksdb");
+    let cfnames: Vec<String> = (0..COLUMNS).map(|c| c.to_string()).collect();
 
     let root_node = Arc::new(RootNode::new(Query, EmptyMutation::<Context>::new()));
-    let ctx = Arc::new(RwLock::new(Arc::new(Context {
-        db: ReadOnlyDB::open_cf(&Options::default(), &db_path, &cf_options).expect("rocksdb"),
-    })));
+    let cfs: Vec<ColumnFamilyDescriptor> = cfnames
+        .into_iter()
+        .map(|name| ColumnFamilyDescriptor::new(name, Options::default())).collect();
+    let descriptor = SecondaryOpenDescriptor::new("./secondary".to_string());
+
+    println!("Creating!");
+    let ctx = Arc::new(Context {
+        db: SecondaryDB::open_cf_descriptors_with_descriptor(&Options::default(), &db_path, cfs, descriptor).expect("rocksdb"),
+    });
     let ctx2 = Arc::clone(&ctx);
+    println!("Created DB!");
     thread::spawn(move || loop {
         thread::sleep(Duration::from_secs(2));
-        let new_db = Arc::new(Context {
-            db: ReadOnlyDB::open_cf(&Options::default(), &db_path, &cf_options).expect("rocksdb"),
-        });
-        *ctx.write().unwrap() = new_db;
+        ctx.db.try_catch_up_with_primary().expect("catch up with primary");
     });
     let new_service = move || {
         let root_node = root_node.clone();
         let ctx2 = ctx2.clone();
         service_fn(move |req| -> Box<dyn Future<Item = _, Error = _> + Send> {
             let root_node = root_node.clone();
-            let ctx = ctx2.read().unwrap().clone();
+            let ctx = ctx2.clone();
             match (req.method(), req.uri().path()) {
                 (&Method::GET, "/") => Box::new(juniper_hyper::graphiql("/graphql")),
                 (&Method::GET, "/graphql") => Box::new(juniper_hyper::graphql(root_node, ctx, req)),

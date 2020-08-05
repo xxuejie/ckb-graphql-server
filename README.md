@@ -1,3 +1,7 @@
+# Note
+
+The current ckb-graphql-server package has shown its age, as the data stored in CKB grow bigger, ckb-graphql-server is getting slower and slower, which might not be enough to cope with latest performance requirements. It might be better to just leverage on CKB's own RPC to build a new GraphQL layer.
+
 # ckb-graphql-server
 
 GraphQL server for CKB. For maximum performance, it works by reading from CKB's data directory directly.
